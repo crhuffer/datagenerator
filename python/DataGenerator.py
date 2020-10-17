@@ -104,10 +104,10 @@ df1.head()
 
 # %%
 
-df1.to_csv(path_rawdata + 'df1.csv')
-df2.to_csv(path_rawdata + 'df2.csv')
-df3.to_csv(path_rawdata + 'df3.csv')
-df4.to_csv(path_rawdata + 'df4.csv')
-df5.to_csv(path_rawdata + 'df5.csv')
+df1.to_csv(path_rawdata + 'df1.csv', index_label=False)
+df2.to_csv(path_rawdata + 'df2.csv', index_label=False)
+df3.to_csv(path_rawdata + 'df3.csv', index_label=False)
+df4.to_csv(path_rawdata + 'df4.csv', index_label=False)
+df5.to_csv(path_rawdata + 'df5.csv', index_label=False)
 
 # %%
