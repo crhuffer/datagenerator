@@ -1,4 +1,3 @@
-
 from sklearn.datasets import make_regression
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,80 +10,95 @@ path_project = os.getcwd()
 path_data = path_project + '/data/'
 path_rawdata = path_data + 'raw_data/'
 path_processeddata = path_data + 'processed_data/'
+path_datasetmetadata = path_data + 'datasetmetadata/'
+
 
 # %%
 
-def regressiontodf(regression):
-    X, y, coef = regression
+def proxy_make_regression(n_samples=100, n_features=100, *, n_informative=10, n_targets=1, bias=0.0,
+                          effective_rank=None, tail_strength=0.5, noise=0.0, shuffle=True, coef=False,
+                          random_state=None):
+    """
+    This proxy creates a wrapper over the makeregression function to enable saving of the input parameters along with
+    the data that they generated.
+
+    arguments should match the make_regression function inside sklearn.
+    """
+
+    dict_arguments = {'n_samples': n_samples, 'n_features': n_features, 'n_informative': n_informative,
+                      'n_targets': n_targets, 'bias': bias, 'effective_rank': effective_rank,
+                      'tail_strength': tail_strength, 'noise': noise, 'shuffle': shuffle, 'coef': coef,
+                      'random_state': random_state}
+
+    X, y, coef = make_regression(**dict_arguments)
+
     df = pd.DataFrame(X)
     df['y'] = y
-    return X, y, coef, df
+
+    dict_datasetmetadata = dict_arguments
+    dict_datasetmetadata['coef'] = str(list(coef))
+
+    return df, dict_datasetmetadata
+
 
 # %%
 
-# def proxy_make_regression(n_samples=100, n_features=100, *, n_informative=10, n_targets=1, bias=0.0,
-#                           effective_rank=None, tail_strength=0.5, noise=0.0, shuffle=True, coef=False,
-#                           random_state=None):
-#
-#     dict_arguments = {'n_samples': n_samples, 'n_features': n_features, 'n_informative': n_informative,
-#                       'n_targets': n_targets, 'bias': bias, 'effective_rank': effective_rank,
-#                       'tail_strength': tail_strength, 'noise': noise, 'shuffle': shuffle, 'coef': coef,
-#                       'random_state': random_state}
-#
-#     make_regression(*)
+df1, dict_datasetmetadata1 = proxy_make_regression(n_samples=10000,
+                                                   n_features=20,
+                                                   n_informative=5,
+                                                   coef=True,
+                                                   random_state=42)
+
+df_datasetmetadata = pd.DataFrame(dict_datasetmetadata1, index=[0])
 
 # %%
 
-X1, y1, coef1 = make_regression(n_samples=10000,
-                                n_features=20,
-                                n_informative=5,
-                                coef=True,
-                                random_state=42)
+df2, dict_datasetmetadata2 = proxy_make_regression(n_samples=10000,
+                                                   n_features=20,
+                                                   n_informative=5,
+                                                   effective_rank=10,
+                                                   coef=True,
+                                                   random_state=42)
 
-df1 = pd.DataFrame(X1); df1['y']=y1
-
-# %%
-
-X2, y2, coef2 = make_regression(n_samples=10000,
-                                n_features=20,
-                                n_informative=5,
-                                effective_rank=10,
-                                coef=True,
-                                random_state=42)
-
-df2 = pd.DataFrame(X2); df2['y'] = y2
+df_datasetmetadata = df_datasetmetadata.append(dict_datasetmetadata2, ignore_index=True)
 
 # %%
 
-X3, y3, coef3, df3 = regressiontodf(make_regression(n_samples=10000,
-                                                    n_features=20,
-                                                    n_informative=4,
-                                                    effective_rank=10,
-                                                    coef=True,
-                                                    random_state=42))
+df3, dict_datasetmetadata3 = proxy_make_regression(n_samples=10000,
+                                                   n_features=20,
+                                                   n_informative=4,
+                                                   effective_rank=10,
+                                                   coef=True,
+                                                   random_state=42)
+
+df_datasetmetadata = df_datasetmetadata.append(dict_datasetmetadata3, ignore_index=True)
 
 # %%
 
-X4, y4, coef4, df4 = regressiontodf(make_regression(n_samples=10000,
-                                                    n_features=20,
-                                                    n_informative=4,
-                                                    effective_rank=10,
-                                                    coef=True,
-                                                    random_state=42))
+df4, dict_datasetmetadata4 = proxy_make_regression(n_samples=10000,
+                                                   n_features=20,
+                                                   n_informative=4,
+                                                   effective_rank=10,
+                                                   coef=True,
+                                                   random_state=42)
+
+df_datasetmetadata = df_datasetmetadata.append(dict_datasetmetadata4, ignore_index=True)
 
 # %%
 
-X5, y5, coef5, df5 = regressiontodf(make_regression(n_samples=10000,
-                                                    n_features=20,
-                                                    n_informative=4,
-                                                    effective_rank=10,
-                                                    noise=0.5,
-                                                    coef=True,
-                                                    random_state=42))
+df5, dict_datasetmetadata5 = proxy_make_regression(n_samples=10000,
+                                                   n_features=20,
+                                                   n_informative=4,
+                                                   effective_rank=10,
+                                                   noise=0.5,
+                                                   coef=True,
+                                                   random_state=42)
+
+df_datasetmetadata = df_datasetmetadata.append(dict_datasetmetadata5, ignore_index=True)
 
 # %%
 
-coef1
+df_datasetmetadata.to_csv(path_datasetmetadata + 'df_datasetmetadata.csv')
 
 # %%
 
