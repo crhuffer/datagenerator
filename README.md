@@ -1,3 +1,4 @@
 
 UML diagram of DataGenerators.py.
-![DataGeneratorsUML](http://github.com/crhuffer/modelingongenerateddata/images/DataGeneratorsUML.png)
+
+![DataGeneratorsUML](https://github.com/crhuffer/modelingongenerateddata/blob/master/images/DataGeneratorsUML.png)
