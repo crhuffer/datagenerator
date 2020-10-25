@@ -64,6 +64,13 @@ class DataGenerator(ABC):
 
         return df
 
+    @property
+    def datasetmetadata(cls):
+        dict_arguments = cls.__dict__
+        dict_datasetmetadata = dict_arguments
+        dict_datasetmetadata['coefficients'] = str(list(datasetgenerator.coefficients[:, 0]))
+        return dict_datasetmetadata
+
 
 # %%
 
@@ -113,49 +120,52 @@ class DataGeneratorReconstructor(DataGenerator):
 # %%
 
 if __name__ == '__main__':
-    # This code should fail!!!!
-    # seed = np.random.randint(0, 100, 1)[0]
-    # datagenerator = DataGenerator()
-    # print(seed, datagenerator.coefficients)
+    import os
 
-    seed = np.random.randint(0, 100, 1)[0]
-    datagenerator = DataGeneratorReconstructor(coefficients=[0.0, 0.0, 73.1, 72.1, 21.5])
-    print(seed, datagenerator.coefficients)
+    datasetgenerator = DataGeneratorConstructor(n_features=20,
+                                                n_informative=5,
+                                                random_state_initialization=42)
 
-    # %%
+    df1 = datasetgenerator.generatesamples(n_samples=10000)
+    df_datasetmetadata = pd.DataFrame(datasetgenerator.datasetmetadata, index=[0])
 
-    datagenerator = DataGeneratorConstructor(n_features=5,
-                                             n_informative=3,
-                                             random_state_initialization=42)
+    datasetgenerator = DataGeneratorConstructor(n_features=20,
+                                                n_informative=5,
+                                                effective_rank=10,
+                                                random_state_initialization=42)
 
-    # %%
+    df2 = datasetgenerator.generatesamples(n_samples=10000)
+    df_datasetmetadata = df_datasetmetadata.append(datasetgenerator.datasetmetadata, ignore_index=True)
 
-    print(datagenerator.coefficients)
+    datasetgenerator = DataGeneratorConstructor(n_features=20,
+                                                n_informative=4,
+                                                effective_rank=10,
+                                                random_state_initialization=42)
 
-    # %%
+    df3 = datasetgenerator.generatesamples(n_samples=10000)
+    df_datasetmetadata = df_datasetmetadata.append(datasetgenerator.datasetmetadata, ignore_index=True)
 
-    coefficients = datagenerator.coefficients
+    datasetgenerator = DataGeneratorConstructor(n_features=20,
+                                                n_informative=4,
+                                                effective_rank=10,
+                                                random_state_initialization=42)
 
-    # %%
+    df4 = datasetgenerator.generatesamples(n_samples=10000)
+    df_datasetmetadata = df_datasetmetadata.append(datasetgenerator.datasetmetadata, ignore_index=True)
 
-    seed = np.random.randint(0, 100, 1)[0]
-    datagenerator = DataGeneratorReconstructor(coefficients=coefficients)
-    print(seed, datagenerator.coefficients)
+    datasetgenerator = DataGeneratorConstructor(n_features=20,
+                                                n_informative=4,
+                                                effective_rank=10,
+                                                noise=0.5,
+                                                random_state_initialization=42)
 
-    # %%
+    df5 = datasetgenerator.generatesamples(n_samples=10000)
+    df_datasetmetadata = df_datasetmetadata.append(datasetgenerator.datasetmetadata, ignore_index=True)
 
-    datagenerator = DataGeneratorReconstructor(coefficients=coefficients, n_targets=1, bias=0.0,
-                                               effective_rank=None, tail_strength=0.5, noise=0.0,
-                                               random_state_initialization=42)
-    print(seed, datagenerator.coefficients)
-    datagenerator.generatesamples(n_samples=100, random_state_generator=42)
+    path_project = os.getcwd()
+    path_data = path_project + '/data/'
+    path_rawdata = path_data + 'raw_data/'
+    path_processeddata = path_data + 'processed_data/'
+    path_datasetmetadata = path_data + 'datasetmetadata/'
 
-    # %%
-
-    datagenerator = DataGeneratorConstructor(n_features=5, n_informative=3, n_targets=1, bias=0.0,
-                                             effective_rank=None, tail_strength=0.5, noise=0.0,
-                                             random_state_initialization=42)
-    print(seed, datagenerator.coefficients)
-    datagenerator.generatesamples(n_samples=100, random_state_generator=42)
-
-# %%
+    df_datasetmetadata.to_csv(path_datasetmetadata + 'df_datasetmetadatav2.csv')
