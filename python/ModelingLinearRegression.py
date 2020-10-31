@@ -1,9 +1,11 @@
 import datetime
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
 
 from DataGenerators import DataGeneratorReconstructor
 from timer import Timer
@@ -17,16 +19,6 @@ path_datasetmetadata = path_data + 'datasetmetadata/'
 # %%
 
 df_datasetmetadata = pd.read_csv(path_datasetmetadata + 'df_datasetmetadatav2.csv')
-
-# %%
-
-df_datasetmetadata.dtypes
-
-# %%
-
-# indexer = df_datasetmetadata['effective_rank'].isnull()
-# df_datasetmetadata['effective_rank'].fillna(value='None', inplace=True)
-# df_datasetmetadata.loc[indexer, 'effective_rank'] = None
 
 # %%
 
@@ -46,28 +38,16 @@ for columnname in df_datasetmetadata.columns:
 dict_generators = dict()
 for counter, index in enumerate(df_datasetmetadata.index):
     dict_datasetmetadata = df_datasetmetadata.iloc[index, :].to_dict()
+    # converts a string representation of a list to an actual python list.
     dict_datasetmetadata['coefficients'] = np.array([[float(x)] for x in
-                                                     dict_datasetmetadata['coefficients'].replace('[', '').replace(']',
-                                                                                                                   '').replace(
-                                                         ' ', '').split(',')])
+                                                     dict_datasetmetadata['coefficients'].
+                                                    replace('[', '').replace(']', '').replace(' ', '').split(',')])
 
     dict_generators['generatorv{}'.format(counter)] = DataGeneratorReconstructor(**dict_datasetmetadata)
 
 # %%
 
-datasetgenerator = DataGeneratorReconstructor(**dict_datasetmetadata)
-datasetgenerator.coefficients
-datasetgenerator.datasetmetadata
-df = datasetgenerator.generatesamples()
-
-# %%
-
 list_numberofsamples = [10, 100, 1000, 10000]
-
-# %%
-
-generatorname = 'generatorv0'
-numberofsamples = 10
 
 # %%
 
@@ -86,11 +66,39 @@ for generatorname in dict_generators.keys():
         X = df.drop(columns=['y'])
         model = LinearRegression()
         model.fit(X, y)
+        y_predict = model.predict(X)
+
         timer.stopAndPrint()
         dict_resultscurrentexperiment = dict()
         dict_resultscurrentexperiment['generatorname'] = generatorname
         dict_resultscurrentexperiment['numberofsamples'] = numberofsamples
-        dict_resultscurrentexperiment['mse'] = generatorname
+        dict_resultscurrentexperiment['mse'] = mean_squared_error(y, y_predict)
         dict_resultscurrentexperiment['modelingduration'] = timer.duration_seconds
-        dict_resultscurrentexperiment['datetime_modeling'] = datetime_modeling
-        dict_results['experimentname'] = experimentname
+        dict_resultscurrentexperiment['datetimemodeling'] = datetime_modeling
+        dict_results[experimentname] = dict_resultscurrentexperiment
+
+# %%
+
+df_results = pd.DataFrame(dict_results).T
+
+# %%
+
+df_results = df_results.set_index('datetimemodeling')
+
+# %%
+
+columnname_y = 'mse'
+fig, ax = plt.subplots()
+df_results.loc[:, columnname_y].plot(ax=ax)
+ax.set_ylabel(columnname_y)
+ax.grid()
+fig.show()
+
+# %%
+
+columnname_y = 'modelingduration'
+fig, ax = plt.subplots()
+df_results.loc[:, columnname_y].plot(ax=ax)
+ax.set_ylabel(columnname_y)
+ax.grid()
+fig.show()
