@@ -59,6 +59,7 @@ class DataGenerator(ABC):
 
         y = np.squeeze(y)
 
+        print(X, y)
         df = pd.DataFrame(X)
         df['y'] = y
 
@@ -68,7 +69,7 @@ class DataGenerator(ABC):
     def datasetmetadata(cls):
         dict_arguments = cls.__dict__
         dict_datasetmetadata = dict_arguments
-        dict_datasetmetadata['coefficients'] = str(list(datasetgenerator.coefficients[:, 0]))
+        dict_datasetmetadata['coefficients'] = str(list(cls.coefficients[:, 0]))
         return dict_datasetmetadata
 
 
@@ -116,6 +117,9 @@ class DataGeneratorReconstructor(DataGenerator):
     def coefficients(self):
         return self.input_coefficients
 
+# %%
+
+
 
 # %%
 
@@ -162,10 +166,10 @@ if __name__ == '__main__':
     df5 = datasetgenerator.generatesamples(n_samples=10000)
     df_datasetmetadata = df_datasetmetadata.append(datasetgenerator.datasetmetadata, ignore_index=True)
 
-    path_project = os.getcwd()
+    path_project = os.getcwd().replace('\\', '/')
     path_data = path_project + '/data/'
     path_rawdata = path_data + 'raw_data/'
     path_processeddata = path_data + 'processed_data/'
     path_datasetmetadata = path_data + 'datasetmetadata/'
 
-    df_datasetmetadata.to_csv(path_datasetmetadata + 'df_datasetmetadatav2.csv')
+    df_datasetmetadata.to_csv(path_datasetmetadata + 'df_datasetmetadatav2.csv', index=False)
