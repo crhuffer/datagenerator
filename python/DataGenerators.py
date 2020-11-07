@@ -34,7 +34,7 @@ class DataGenerator(ABC):
     def coefficients(self):
         return NotImplementedError
 
-    def generatesamples(self, n_samples=100, random_state_generator=None) -> pd.DataFrame:
+    def generatesamples(self, n_samples=100, random_state_generator=None, verbose=False) -> pd.DataFrame:
         from sklearn.datasets._samples_generator import make_low_rank_matrix
 
         seed = check_random_state(random_state_generator)
@@ -59,7 +59,9 @@ class DataGenerator(ABC):
 
         y = np.squeeze(y)
 
-        print(X, y)
+        if verbose:
+            print(X, y)
+
         df = pd.DataFrame(X)
         df['y'] = y
 
@@ -142,7 +144,7 @@ if __name__ == '__main__':
     df_datasetmetadata = df_datasetmetadata.append(datasetgenerator.datasetmetadata, ignore_index=True)
 
     datasetgenerator = DataGeneratorConstructor(n_features=20,
-                                                n_informative=4,
+                                                n_informative=15,
                                                 effective_rank=10,
                                                 random_state_initialization=42)
 
