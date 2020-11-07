@@ -4,15 +4,62 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 
 from DataGenerators import DataGeneratorReconstructor
 from timer import Timer
 
+
+@pd.api.extensions.register_dataframe_accessor("plotter")
+class PlotterAccessor:
+    def __init__(self, pandas_obj):
+        self._validate(pandas_obj)
+        self._obj = pandas_obj
+        self.huecountthreshold = 10
+
+    @staticmethod
+    def _validate(obj):
+        pass
+
+    def plot(self, hue: [str, None] = None, replacelabelwithhuename=True, verbose=False, *args, **kwargs):
+        # plot this array's data on a map, e.g., using Cartopy
+
+        if verbose:
+            print('hue: {}'.format(hue))
+        if hue is not None:
+            df_value_counts = self._obj[hue].value_counts()
+            list_names = list(df_value_counts.index)
+            # list_counts = list(df_value_counts.values)
+            numberofuniquevalues = len(list_names)
+
+            if numberofuniquevalues > self.huecountthreshold:
+                error_string = '''
+                               The hue column that was passed has {} unique values. This is higher than the current huecountthreshold = {}. Excedding the threshold will likely result in a bad plot or performance. If you want to overwrite the threshold overwrite the property obj.huecountthreshold.
+                               '''.format(numberofuniquevalues, self.huecountthreshold)
+
+                raise ValueError(error_string)
+
+            for huename in list_names:
+                indexer = self._obj[hue] == huename
+                if replacelabelwithhuename:
+                    self._obj.loc[indexer, :].plot(*args, **kwargs, label=huename)
+                else:
+                    self._obj.loc[indexer, :].plot(*args, **kwargs)
+        else:
+            self._obj.plot(*args, **kwargs)
+
+
+# %%
+
+figsize_1 = 10, 5
+figsize_1on2 = 5, 5
+
 # %%
 
 path_project = os.getcwd().replace('\\', '/')
+print('Project path: {}'.format(path_project))
 path_data = path_project + '/data/'
 path_datasetmetadata = path_data + 'datasetmetadata/'
 
@@ -30,6 +77,7 @@ for columnname in df_datasetmetadata.columns:
             indexer = df_datasetmetadata[columnname].notnull()
             df_temp = df_datasetmetadata[columnname].copy()
             df_datasetmetadata[columnname] = None
+            df_datasetmetadata.loc[indexer, columnname] = df_temp
     except KeyError:
         pass
 
@@ -47,47 +95,61 @@ for counter, index in enumerate(df_datasetmetadata.index):
 
 # %%
 
-list_numberofsamples = [10, 100, 1000, 10000]
+list_numberofsamples = [10, 30, 50, 100, 300, 500, 1000, 3000, 5000, 10000]
+list_numberofsamples = list(np.arange(5, 51, 1))
+repetitions = 5
+# list_numberofsamples = list(np.arange(5, 51, 10))
+# repetitions = 1
 
 # %%
 
 dict_results = dict()
-for generatorname in dict_generators.keys():
-    generator = dict_generators[generatorname]
-    for numberofsamples in list_numberofsamples:
-        datetime_modeling = datetime.datetime.now()
-        experimentname = '_'.join([generatorname, 'n' + str(numberofsamples)])
-        timer = Timer(taskname='Training Experiment {}'.format(experimentname))
-        print('generator name: {}'.format(generatorname))
-        print('number of samples: {}'.format(numberofsamples))
-        df = generator.generatesamples(n_samples=numberofsamples,
-                                       random_state_generator=np.random.randint(0, 1e6, 1)[0])
-        y = df['y']
-        X = df.drop(columns=['y'])
-        model = LinearRegression()
-        model.fit(X, y)
-        y_predict = model.predict(X)
+for repetition in range(repetitions):
+    for generatorname in dict_generators.keys():
+        generator = dict_generators[generatorname]
+        for numberofsamples in list_numberofsamples:
+            datetime_modeling = datetime.datetime.now()
+            experimentname = '_'.join([generatorname, 'n' + str(numberofsamples)])
+            timer = Timer(taskname='Training Experiment {}'.format(experimentname))
+            # print('generator name: {}'.format(generatorname))
+            # print('number of samples: {}'.format(numberofsamples))
+            df_train = generator.generatesamples(n_samples=numberofsamples,
+                                                 random_state_generator=np.random.randint(0, 1e6, 1)[0])
+            df_test = generator.generatesamples(n_samples=10000,
+                                                random_state_generator=np.random.randint(0, 1e6, 1)[0])
 
-        timer.stopAndPrint()
-        dict_resultscurrentexperiment = dict()
-        dict_resultscurrentexperiment['generatorname'] = generatorname
-        dict_resultscurrentexperiment['numberofsamples'] = numberofsamples
-        dict_resultscurrentexperiment['mse'] = mean_squared_error(y, y_predict)
-        dict_resultscurrentexperiment['modelingduration'] = timer.duration_seconds
-        dict_resultscurrentexperiment['datetimemodeling'] = datetime_modeling
-        dict_results[experimentname] = dict_resultscurrentexperiment
+            y_train = df_train['y']
+            X_train = df_train.drop(columns=['y'])
+            y_test = df_test['y']
+            X_test = df_test.drop(columns=['y'])
 
-# %%
+            model = LinearRegression()
+
+            # give it two tries to converge
+            try:
+                model.fit(X_train, y_train)
+            except np.linalg.LinAlgError:
+                model.fit(X_train, y_train)
+
+            y_train_predict = model.predict(X_train)
+            y_test_predict = model.predict(X_test)
+
+            timer.stopAndPrint()
+            dict_resultscurrentexperiment = dict()
+            dict_resultscurrentexperiment['generatorname'] = generatorname
+            dict_resultscurrentexperiment['numberofsamples'] = numberofsamples
+            dict_resultscurrentexperiment['mse_train'] = mean_squared_error(y_train, y_train_predict)
+            dict_resultscurrentexperiment['mse_test'] = mean_squared_error(y_test, y_test_predict)
+            dict_resultscurrentexperiment['modelingduration'] = timer.duration_seconds
+            dict_resultscurrentexperiment['datetimemodeling'] = datetime_modeling
+            dict_results[experimentname] = dict_resultscurrentexperiment
 
 df_results = pd.DataFrame(dict_results).T
-
-# %%
-
 df_results = df_results.set_index('datetimemodeling')
 
 # %%
 
-columnname_y = 'mse'
+columnname_y = 'mse_test'
 fig, ax = plt.subplots()
 df_results.loc[:, columnname_y].plot(ax=ax)
 ax.set_ylabel(columnname_y)
@@ -102,3 +164,71 @@ df_results.loc[:, columnname_y].plot(ax=ax)
 ax.set_ylabel(columnname_y)
 ax.grid()
 fig.show()
+
+# %%
+
+columnname_y = 'modelingduration'
+fig, ax = plt.subplots()
+df_results.plot(x='numberofsamples', y=columnname_y, marker='o', ax=ax, linewidth=0, alpha=0.2)
+ax.set_ylabel(columnname_y)
+ax.grid()
+ax.set_xscale('log')
+fig.show()
+
+# %%
+
+# columnname_y = 'mse_test'
+# fig, ax = plt.subplots()
+# df_results.plot(x='numberofsamples', y=columnname_y, marker='o', ax=ax, linewidth=0, alpha=0.2, hue='generatorname')
+# ax.set_ylabel(columnname_y)
+# ax.grid()
+# ax.set_xscale('log')
+# fig.show()
+
+# %%
+
+fig, axes = plt.subplots(2, 1, sharex=True, figsize=figsize_1on2)
+ax = axes[0]
+sns.scatterplot(x='numberofsamples', y='mse_test', marker='o', ax=ax, data=df_results, hue='generatorname')
+ax.grid()
+
+ax = axes[1]
+sns.scatterplot(x='numberofsamples', y='mse_train', marker='o', ax=ax, data=df_results, hue='generatorname')
+ax.grid()
+
+# ax.set_xscale('log')
+fig.show()
+
+# %%
+
+fig, ax = plt.subplots(1, 1, sharex=True, figsize=figsize_1on2)
+
+sns.scatterplot(x='mse_train', y='mse_test', marker='o', ax=ax, data=df_results, hue='generatorname')
+ax.grid()
+
+ax.set_yscale('log')
+fig.show()
+
+# %%
+
+fig, ax = plt.subplots(1, 1, sharex=True, figsize=figsize_1on2)
+
+df_results.plotter.plot(x='mse_train', y='mse_test', marker='o', ax=ax)
+ax.grid()
+
+ax.set_yscale('log')
+fig.show()
+
+# %%
+
+fig, ax = plt.subplots(1, 1, sharex=True, figsize=figsize_1on2)
+
+df_results.plotter.plot(x='mse_train', y='mse_test', marker='o', ax=ax, hue='generatorname', linewidth=0)
+ax.grid()
+
+ax.set_yscale('log')
+fig.show()
+
+# %%
+
+
