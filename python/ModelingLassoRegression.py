@@ -5,12 +5,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LassoCV, Lasso
 from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import scale
 
 from DataGenerators import DataGeneratorReconstructor
 from timer import Timer
 
+from tenacity import retry, stop_after_attempt
 
 @pd.api.extensions.register_dataframe_accessor("plotter")
 class PlotterAccessor:
@@ -98,10 +100,27 @@ for counter, index in enumerate(df_datasetmetadata.index):
 # %%
 
 list_numberofsamples = [10, 30, 50, 100, 300, 500, 1000, 3000, 5000, 10000]
+list_numberofsamples = list(np.arange(5, 51, 1))
 list_numberofsamples = list(np.arange(5, 51, 1)) + [int(x) for x in [1e2, 2e2, 4e2, 1e3]]
 repetitions = 5
 # list_numberofsamples = list(np.arange(5, 51, 10))
 # repetitions = 1
+
+# %%
+
+array_alphas = 10**np.linspace(10,-2,100)*0.5
+array_alphas
+
+# %%
+
+@retry(stop=stop_after_attempt(7))
+def trylasso5times(array_alphas, cv=5, max_iter=1e6, normalize=True):
+    lassocv = LassoCV(alphas=array_alphas, cv=5, max_iter=1e6, normalize=True)
+    lassocv.fit(X_train, y_train)
+    lasso = Lasso()
+    lasso.set_params(alpha=lassocv.alpha_)
+    lasso.fit(X_train, y_train)
+    return lasso, lassocv
 
 # %%
 
@@ -125,16 +144,12 @@ for repetition in range(repetitions):
             y_test = df_test['y']
             X_test = df_test.drop(columns=['y'])
 
-            model = LinearRegression()
+            attempts = 0
 
-            # give it two tries to converge
-            try:
-                model.fit(X_train, y_train)
-            except np.linalg.LinAlgError:
-                model.fit(X_train, y_train)
+            lasso, lassocv = trylasso5times(array_alphas=array_alphas)
 
-            y_train_predict = model.predict(X_train)
-            y_test_predict = model.predict(X_test)
+            y_train_predict = lasso.predict(X_train)
+            y_test_predict = lasso.predict(X_test)
 
             timer.stopAndPrint()
             dict_resultscurrentexperiment = dict()
@@ -148,6 +163,23 @@ for repetition in range(repetitions):
 
 df_results = pd.DataFrame(dict_results).T
 df_results = df_results.set_index('datetimemodeling')
+
+# %%
+
+df_mse_path = pd.DataFrame(lassocv.mse_path_)
+df_mse_path.index = lassocv.alphas_
+
+# %%
+
+df_mse_path.head()
+
+# %%
+
+fig, ax = plt.subplots()
+df_mse_path.plot(ax=ax, marker='.')
+ax.grid()
+ax.set_xscale('log')
+fig.show()
 
 # %%
 
@@ -205,7 +237,7 @@ fig.show()
 
 fig, ax = plt.subplots(1, 1, sharex=True, figsize=figsize_1on2)
 
-sns.scatterplot(x='mse_train', y='mse_test', marker='o', ax=ax, data=df_results, hue='generatorname')
+df_results.plotter.plot(x='mse_train', y='mse_test', marker='o', ax=ax, hue='generatorname')
 ax.grid()
 
 ax.set_yscale('log')
@@ -232,7 +264,6 @@ ax.set_yscale('log')
 fig.show()
 
 # %%
-
 
 fig, axes = plt.subplots(2, 1, sharex=True, figsize=figsize_1on2)
 ax = axes[0]
@@ -278,9 +309,50 @@ ax.set_ylabel('mse_train')
 ax.grid()
 
 ax.set_yscale('log')
-ax.set_xscale('log')
 ax.set_ylim(1e-3, 1e5)
-fig.suptitle('Linear Regression')
+fig.suptitle('Lasso Regression')
 fig.show()
+
+# %%
+
+marker='.'
+alpha=0.3
+fig, axes = plt.subplots(2, 1, sharex=True, figsize=figsize_1, sharey=True)
+ax = axes[0]
+df_results.plotter.plot(x='numberofsamples', y='mse_test', marker=marker, ax=ax, hue='generatorname', alpha=alpha)
+ax.grid()
+ax.set_ylabel('mse_test')
+
+ax = axes[1]
+df_results.plotter.plot(x='numberofsamples', y='mse_train', marker=marker, ax=ax, hue='generatorname', alpha=alpha)
+ax.set_ylabel('mse_train')
+ax.grid()
+
+ax.set_yscale('log')
+# ax.set_ylim(1e-5, 1e5)
+fig.suptitle('Lasso Regression')
+fig.show()
+
+
+# %%
+
+marker='.'
+alpha=0.3
+fig, axes = plt.subplots(2, 1, sharex=True, figsize=figsize_1, sharey=True)
+ax = axes[0]
+df_results.plotter.plot(x='numberofsamples', y='mse_test', marker=marker, ax=ax, hue='generatorname', alpha=alpha)
+ax.grid()
+ax.set_ylabel('mse_test')
+
+ax = axes[1]
+df_results.plotter.plot(x='numberofsamples', y='mse_train', marker=marker, ax=ax, hue='generatorname', alpha=alpha)
+ax.set_ylabel('mse_train')
+ax.grid()
+
+ax.set_yscale('log')
+ax.set_ylim(1e3, 1e4)
+fig.suptitle('Lasso Regression')
+fig.show()
+
 # %%
 

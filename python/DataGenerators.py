@@ -168,6 +168,17 @@ if __name__ == '__main__':
     df5 = datasetgenerator.generatesamples(n_samples=10000)
     df_datasetmetadata = df_datasetmetadata.append(datasetgenerator.datasetmetadata, ignore_index=True)
 
+
+    datasetgenerator = DataGeneratorConstructor(n_features=20,
+                                                n_informative=4,
+                                                effective_rank=10,
+                                                noise=50.,
+                                                random_state_initialization=42)
+
+    df6 = datasetgenerator.generatesamples(n_samples=10000)
+    df_datasetmetadata = df_datasetmetadata.append(datasetgenerator.datasetmetadata, ignore_index=True)
+
+
     path_project = os.getcwd().replace('\\', '/')
     path_data = path_project + '/data/'
     path_rawdata = path_data + 'raw_data/'
