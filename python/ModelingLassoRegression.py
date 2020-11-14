@@ -333,6 +333,27 @@ ax.set_yscale('log')
 fig.suptitle('Lasso Regression')
 fig.show()
 
+# %%
+
+marker='.'
+alpha=0.7
+fig, axes = plt.subplots(2, 1, sharex=True, figsize=figsize_1, sharey=True)
+ax = axes[0]
+df_results.plotter.plot(x='numberofsamples', y='mse_test', marker=marker, ax=ax, hue='generatorname', alpha=alpha)
+ax.grid()
+ax.set_ylabel('mse_test')
+
+ax = axes[1]
+df_results.plotter.plot(x='numberofsamples', y='mse_train', marker=marker, ax=ax, hue='generatorname', alpha=alpha)
+ax.set_ylabel('mse_train')
+ax.grid()
+
+ax.set_yscale('log')
+# ax.set_ylim(1e-5, 1e5)
+ax.set_xlim(0, 75)
+fig.suptitle('Lasso Regression')
+fig.show()
+
 
 # %%
 
@@ -356,3 +377,6 @@ fig.show()
 
 # %%
 
+df_results.head()
+
+# %%

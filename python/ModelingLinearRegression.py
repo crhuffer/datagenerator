@@ -11,7 +11,6 @@ from sklearn.metrics import mean_squared_error
 from DataGenerators import DataGeneratorReconstructor
 from timer import Timer
 
-
 @pd.api.extensions.register_dataframe_accessor("plotter")
 class PlotterAccessor:
     def __init__(self, pandas_obj):
@@ -233,7 +232,6 @@ fig.show()
 
 # %%
 
-
 fig, axes = plt.subplots(2, 1, sharex=True, figsize=figsize_1on2)
 ax = axes[0]
 df_results.plotter.plot(x='numberofsamples', y='mse_test', marker='o', ax=ax, hue='generatorname')
@@ -247,7 +245,6 @@ ax.grid()
 fig.show()
 
 # %%
-
 
 fig, axes = plt.subplots(2, 1, sharex=True, figsize=figsize_1, sharey=True)
 ax = axes[0]
@@ -282,5 +279,9 @@ ax.set_xscale('log')
 ax.set_ylim(1e-3, 1e5)
 fig.suptitle('Linear Regression')
 fig.show()
+
+# %%
+
+
 # %%
 
