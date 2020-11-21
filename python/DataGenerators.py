@@ -32,6 +32,8 @@ class DataGenerator(ABC):
     @property
     @abstractmethod
     def coefficients(self):
+        # The way that coefficients is generated will depend on the subclass, but for the generator to be reproducible
+        # the coefficients must be stored. These requirements motivating making this an abstract property.
         return NotImplementedError
 
     def generatesamples(self, n_samples=100, random_state_generator=None, verbose=False) -> pd.DataFrame:
@@ -69,6 +71,7 @@ class DataGenerator(ABC):
 
     @property
     def datasetmetadata(cls):
+        # This property is meant to store all of the meta data required to understand / reproduce the dataset generator.
         dict_arguments = cls.__dict__
         dict_datasetmetadata = dict_arguments
         dict_datasetmetadata['coefficients'] = str(list(cls.coefficients[:, 0]))
@@ -119,8 +122,8 @@ class DataGeneratorReconstructor(DataGenerator):
     def coefficients(self):
         return self.input_coefficients
 
-# %%
 
+# %%
 
 
 # %%
@@ -168,7 +171,6 @@ if __name__ == '__main__':
     df5 = datasetgenerator.generatesamples(n_samples=10000)
     df_datasetmetadata = df_datasetmetadata.append(datasetgenerator.datasetmetadata, ignore_index=True)
 
-
     datasetgenerator = DataGeneratorConstructor(n_features=20,
                                                 n_informative=4,
                                                 effective_rank=10,
@@ -177,7 +179,6 @@ if __name__ == '__main__':
 
     df6 = datasetgenerator.generatesamples(n_samples=10000)
     df_datasetmetadata = df_datasetmetadata.append(datasetgenerator.datasetmetadata, ignore_index=True)
-
 
     path_project = os.getcwd().replace('\\', '/')
     path_data = path_project + '/data/'
