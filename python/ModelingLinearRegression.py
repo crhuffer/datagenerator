@@ -6,16 +6,16 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.linear_model import LinearRegression
-
 from tenacity import retry, stop_after_attempt
 
-from DataGenerators import DataGeneratorReconstructor, Adapter_DatasetMetaData
+from DataGenerators import Adapter_DatasetMetaData, createdictofdatasetgenerators
 from modelresultevaluators import evaluatemodelresultsv1
 from timer import Timer
 
 # %%
 
 modeltype = LinearRegression.__name__
+
 
 # %%
 
@@ -60,6 +60,7 @@ class PlotterAccessor:
         if 'ax' in kwargs.keys() and 'y' in kwargs.keys():
             kwargs['ax'].set_ylabel(kwargs['y'])
 
+
 # %%
 
 figsize_1 = 10, 5
@@ -72,9 +73,6 @@ print('Project path: {}'.format(path_project))
 path_data = path_project + '/data/'
 path_datasetmetadata = path_data + 'datasetmetadata/'
 
-# %%
-
-df_datasetmetadata = Adapter_DatasetMetaData().run(pd.read_csv(path_datasetmetadata + 'df_datasetmetadatav2.csv'))
 
 # %%
 
@@ -83,31 +81,11 @@ def fitmodel(X_train, y_test):
     model.fit(X_train, y_train)
     return model
 
-# %%
-#
-# for columnname in df_datasetmetadata.columns:
-#     # the true index won't exist if there aren't nulls.
-#     try:
-#         if df_datasetmetadata[columnname].isnull().value_counts()[True] > 0:
-#             print('columnname: {} has nans converting to None'.format(columnname))
-#             indexer = df_datasetmetadata[columnname].notnull()
-#             df_temp = df_datasetmetadata[columnname].copy()
-#             df_datasetmetadata[columnname] = None
-#             df_datasetmetadata.loc[indexer, columnname] = df_temp
-#     except KeyError:
-#         pass
 
 # %%
 
-dict_generators = dict()
-for counter, index in enumerate(df_datasetmetadata.index):
-    dict_datasetmetadata = df_datasetmetadata.iloc[index, :].to_dict()
-    # converts a string representation of a list to an actual python list.
-    dict_datasetmetadata['coefficients'] = np.array([[float(x)] for x in
-                                                     dict_datasetmetadata['coefficients'].
-                                                    replace('[', '').replace(']', '').replace(' ', '').split(',')])
-
-    dict_generators['generatorv{}'.format(counter)] = DataGeneratorReconstructor(**dict_datasetmetadata)
+df_datasetmetadata = Adapter_DatasetMetaData().run(pd.read_csv(path_datasetmetadata + 'df_datasetmetadatav2.csv'))
+dict_datasetgenerators = createdictofdatasetgenerators(df_datasetmetadata)
 
 # %%
 
@@ -122,8 +100,8 @@ repetitions = 5
 numberofsamples_test = 10000
 dict_results = dict()
 for repetition in range(repetitions):
-    for generatorname in dict_generators.keys():
-        generator = dict_generators[generatorname]
+    for generatorname in dict_datasetgenerators.keys():
+        generator = dict_datasetgenerators[generatorname]
         for numberofsamples_train in list_numberofsamples:
             datetime_modeling = datetime.datetime.now()
             experimentname = '_'.join([generatorname, 'n' + str(numberofsamples_train)])
@@ -207,16 +185,6 @@ ax.set_ylabel(columnname_y)
 ax.grid()
 ax.set_xscale('log')
 fig.show()
-
-# %%
-
-# columnname_y = 'mse_test'
-# fig, ax = plt.subplots()
-# df_results.plot(x='numberofsamples_train', y=columnname_y, marker='o', ax=ax, linewidth=0, alpha=0.2, hue='generatorname')
-# ax.set_ylabel(columnname_y)
-# ax.grid()
-# ax.set_xscale('log')
-# fig.show()
 
 # %%
 

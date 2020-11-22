@@ -212,3 +212,18 @@ class Adapter_DatasetMetaData:
                 pass
 
         return df_datasetmetadata
+
+
+
+def createdictofdatasetgenerators(df_datasetmetadata):
+
+    dict_generators = dict()
+    for counter, index in enumerate(df_datasetmetadata.index):
+        dict_datasetmetadata = df_datasetmetadata.iloc[index, :].to_dict()
+        # converts a string representation of a list to an actual python list.
+        dict_datasetmetadata['coefficients'] = np.array([[float(x)] for x in
+                                                         dict_datasetmetadata['coefficients'].
+                                                        replace('[', '').replace(']', '').replace(' ', '').split(',')])
+
+        dict_generators['generatorv{}'.format(counter)] = DataGeneratorReconstructor(**dict_datasetmetadata)
+    return dict_generators
