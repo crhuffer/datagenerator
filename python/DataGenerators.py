@@ -187,3 +187,28 @@ if __name__ == '__main__':
     path_datasetmetadata = path_data + 'datasetmetadata/'
 
     df_datasetmetadata.to_csv(path_datasetmetadata + 'df_datasetmetadatav2.csv', index=False)
+
+
+# %%
+
+class Adapter_DatasetMetaData:
+
+    def __init__(self):
+        pass
+
+    def run(self, df_datasetmetadata):
+
+        for columnname in df_datasetmetadata.columns:
+
+            try:
+                if df_datasetmetadata[columnname].isnull().value_counts()[True] > 0:
+                    print('columnname: {} has nans converting to None'.format(columnname))
+                    indexer = df_datasetmetadata[columnname].notnull()
+                    df_temp = df_datasetmetadata[columnname].copy()
+                    df_datasetmetadata[columnname] = None
+                    df_datasetmetadata.loc[indexer, columnname] = df_temp
+            except KeyError:  # the true index won't exist if there aren't nulls.
+                print('No nulls in {}, skipping'.format(columnname))
+                pass
+
+        return df_datasetmetadata

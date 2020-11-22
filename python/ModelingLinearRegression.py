@@ -9,7 +9,7 @@ from sklearn.linear_model import LinearRegression
 
 from tenacity import retry, stop_after_attempt
 
-from DataGenerators import DataGeneratorReconstructor
+from DataGenerators import DataGeneratorReconstructor, Adapter_DatasetMetaData
 from modelresultevaluators import evaluatemodelresultsv1
 from timer import Timer
 
@@ -74,7 +74,7 @@ path_datasetmetadata = path_data + 'datasetmetadata/'
 
 # %%
 
-df_datasetmetadata = pd.read_csv(path_datasetmetadata + 'df_datasetmetadatav2.csv')
+df_datasetmetadata = Adapter_DatasetMetaData().run(pd.read_csv(path_datasetmetadata + 'df_datasetmetadatav2.csv'))
 
 # %%
 
@@ -84,18 +84,18 @@ def fitmodel(X_train, y_test):
     return model
 
 # %%
-
-for columnname in df_datasetmetadata.columns:
-    # the true index won't exist if there aren't nulls.
-    try:
-        if df_datasetmetadata[columnname].isnull().value_counts()[True] > 0:
-            print('columnname: {} has nans converting to None'.format(columnname))
-            indexer = df_datasetmetadata[columnname].notnull()
-            df_temp = df_datasetmetadata[columnname].copy()
-            df_datasetmetadata[columnname] = None
-            df_datasetmetadata.loc[indexer, columnname] = df_temp
-    except KeyError:
-        pass
+#
+# for columnname in df_datasetmetadata.columns:
+#     # the true index won't exist if there aren't nulls.
+#     try:
+#         if df_datasetmetadata[columnname].isnull().value_counts()[True] > 0:
+#             print('columnname: {} has nans converting to None'.format(columnname))
+#             indexer = df_datasetmetadata[columnname].notnull()
+#             df_temp = df_datasetmetadata[columnname].copy()
+#             df_datasetmetadata[columnname] = None
+#             df_datasetmetadata.loc[indexer, columnname] = df_temp
+#     except KeyError:
+#         pass
 
 # %%
 
