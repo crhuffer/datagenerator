@@ -16,3 +16,36 @@ This enables some types of research that might be harder to do without a dataset
 Flow of the code:
 DataGenerators.py: Creates the datasets and saves their metadata.
 Modeling... .py: Loads the metadata and uses DataGeneratorReconstructors to build data sets and then builds models on those datasets. 
+
+#Model Results Format
+I am thinking two tables, one for all models and another for well turned or final models.
+
+Open questions:
+1. How should we store the results of k-fold CV?
+    * Only the final model?
+
+* DataGenerator
+    * name: str
+    * seed train = seed_train: int
+    * seed test = seed_test: int
+    * number of samples train = numberofsamples_train: int
+    * number of samples test = numberofsamples_test: int
+* Model
+    * type = modeltype: str e.g. 'sklearn.LinearRegression'
+    * hyperparameters: dict e.g. {'alpha': 0.001}
+        * Assume default parameters if not passed?
+* Performance
+    * rmse_train: float
+    * r2_score_train: float
+    * mae_train: float
+    * rmse_test: float
+    * r2_score_test: float
+    * mae_test: float
+* Preprocessign
+    * Standardization: bool
+    * Normalization: bool
+    * VIF filter: [None, float] 
+        * float is the threshold at which you discard features with the highest VIF.
+* Auxillary Metrics:
+    * training duration (seconds): float (for the single model)
+    * scoring duration (seconds): float (for the single model)
