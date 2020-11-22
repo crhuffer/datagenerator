@@ -6,10 +6,18 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
+
+from tenacity import retry, stop_after_attempt
 
 from DataGenerators import DataGeneratorReconstructor
+from modelresultevaluators import evaluatemodelresultsv1
 from timer import Timer
+
+# %%
+
+modeltype = LinearRegression.__name__
+
+# %%
 
 @pd.api.extensions.register_dataframe_accessor("plotter")
 class PlotterAccessor:
@@ -70,6 +78,13 @@ df_datasetmetadata = pd.read_csv(path_datasetmetadata + 'df_datasetmetadatav2.cs
 
 # %%
 
+@retry(stop=stop_after_attempt(7))
+def fitmodel(X_train, y_test):
+    model.fit(X_train, y_train)
+    return model
+
+# %%
+
 for columnname in df_datasetmetadata.columns:
     # the true index won't exist if there aren't nulls.
     try:
@@ -104,20 +119,24 @@ repetitions = 5
 
 # %%
 
+numberofsamples_test = 10000
 dict_results = dict()
 for repetition in range(repetitions):
     for generatorname in dict_generators.keys():
         generator = dict_generators[generatorname]
-        for numberofsamples in list_numberofsamples:
+        for numberofsamples_train in list_numberofsamples:
             datetime_modeling = datetime.datetime.now()
-            experimentname = '_'.join([generatorname, 'n' + str(numberofsamples)])
+            experimentname = '_'.join([generatorname, 'n' + str(numberofsamples_train)])
             timer = Timer(taskname='Training Experiment {}'.format(experimentname))
             # print('generator name: {}'.format(generatorname))
             # print('number of samples: {}'.format(numberofsamples))
-            df_train = generator.generatesamples(n_samples=numberofsamples,
-                                                 random_state_generator=np.random.randint(0, 1e6, 1)[0])
-            df_test = generator.generatesamples(n_samples=10000,
-                                                random_state_generator=np.random.randint(0, 1e6, 1)[0])
+
+            seed_train = np.random.randint(0, 1e6, 1)[0]
+            df_train = generator.generatesamples(n_samples=numberofsamples_train,
+                                                 random_state_generator=seed_train)
+            seed_test = np.random.randint(0, 1e6, 1)[0]
+            df_test = generator.generatesamples(n_samples=numberofsamples_test,
+                                                random_state_generator=seed_test)
 
             y_train = df_train['y']
             X_train = df_train.drop(columns=['y'])
@@ -126,23 +145,36 @@ for repetition in range(repetitions):
 
             model = LinearRegression()
 
-            # give it two tries to converge
-            try:
-                model.fit(X_train, y_train)
-            except np.linalg.LinAlgError:
-                model.fit(X_train, y_train)
+            timer_training = Timer('Training the model')
+            model = fitmodel(X_train, y_train)
+            timer_training.stopAndPrint()
 
+            timer_scoring = Timer('Scoring the model')
             y_train_predict = model.predict(X_train)
             y_test_predict = model.predict(X_test)
+            timer_scoring.stopAndPrint()
 
             timer.stopAndPrint()
+
             dict_resultscurrentexperiment = dict()
             dict_resultscurrentexperiment['generatorname'] = generatorname
-            dict_resultscurrentexperiment['numberofsamples'] = numberofsamples
-            dict_resultscurrentexperiment['mse_train'] = mean_squared_error(y_train, y_train_predict)
-            dict_resultscurrentexperiment['mse_test'] = mean_squared_error(y_test, y_test_predict)
-            dict_resultscurrentexperiment['modelingduration'] = timer.duration_seconds
+            dict_resultscurrentexperiment['numberofsamples_train'] = numberofsamples_train
+            dict_resultscurrentexperiment['numberofsamples_test'] = numberofsamples_test
+            dict_resultscurrentexperiment['seed_train'] = seed_train
+            dict_resultscurrentexperiment['seed_test'] = seed_test
+
+            dict_resultscurrentexperiment['modeltype'] = modeltype
+
+            dict_metrics_train = evaluatemodelresultsv1(y_train, y_train_predict, suffix='_train')
+            dict_resultscurrentexperiment.update(dict_metrics_train)
+
+            dict_metrics_test = evaluatemodelresultsv1(y_test, y_test_predict, suffix='_test')
+            dict_resultscurrentexperiment.update(dict_metrics_test)
+
+            dict_resultscurrentexperiment['trainingduration'] = timer_training.duration_seconds
+            dict_resultscurrentexperiment['scoringduration'] = timer_scoring.duration_seconds
             dict_resultscurrentexperiment['datetimemodeling'] = datetime_modeling
+
             dict_results[experimentname] = dict_resultscurrentexperiment
 
 df_results = pd.DataFrame(dict_results).T
@@ -150,7 +182,7 @@ df_results = df_results.set_index('datetimemodeling')
 
 # %%
 
-columnname_y = 'mse_test'
+columnname_y = 'rmse_test'
 fig, ax = plt.subplots()
 df_results.loc[:, columnname_y].plot(ax=ax)
 ax.set_ylabel(columnname_y)
@@ -159,7 +191,7 @@ fig.show()
 
 # %%
 
-columnname_y = 'modelingduration'
+columnname_y = 'trainingduration'
 fig, ax = plt.subplots()
 df_results.loc[:, columnname_y].plot(ax=ax)
 ax.set_ylabel(columnname_y)
@@ -168,9 +200,9 @@ fig.show()
 
 # %%
 
-columnname_y = 'modelingduration'
+columnname_y = 'trainingduration'
 fig, ax = plt.subplots()
-df_results.plot(x='numberofsamples', y=columnname_y, marker='o', ax=ax, linewidth=0, alpha=0.2)
+df_results.plot(x='numberofsamples_train', y=columnname_y, marker='o', ax=ax, linewidth=0, alpha=0.2)
 ax.set_ylabel(columnname_y)
 ax.grid()
 ax.set_xscale('log')
@@ -180,7 +212,7 @@ fig.show()
 
 # columnname_y = 'mse_test'
 # fig, ax = plt.subplots()
-# df_results.plot(x='numberofsamples', y=columnname_y, marker='o', ax=ax, linewidth=0, alpha=0.2, hue='generatorname')
+# df_results.plot(x='numberofsamples_train', y=columnname_y, marker='o', ax=ax, linewidth=0, alpha=0.2, hue='generatorname')
 # ax.set_ylabel(columnname_y)
 # ax.grid()
 # ax.set_xscale('log')
@@ -190,11 +222,11 @@ fig.show()
 
 fig, axes = plt.subplots(2, 1, sharex=True, figsize=figsize_1on2)
 ax = axes[0]
-sns.scatterplot(x='numberofsamples', y='mse_test', marker='o', ax=ax, data=df_results, hue='generatorname')
+sns.scatterplot(x='numberofsamples_train', y='rmse_test', marker='o', ax=ax, data=df_results, hue='generatorname')
 ax.grid()
 
 ax = axes[1]
-sns.scatterplot(x='numberofsamples', y='mse_train', marker='o', ax=ax, data=df_results, hue='generatorname')
+sns.scatterplot(x='numberofsamples_train', y='rmse_train', marker='o', ax=ax, data=df_results, hue='generatorname')
 ax.grid()
 
 # ax.set_xscale('log')
@@ -204,7 +236,7 @@ fig.show()
 
 fig, ax = plt.subplots(1, 1, sharex=True, figsize=figsize_1on2)
 
-sns.scatterplot(x='mse_train', y='mse_test', marker='o', ax=ax, data=df_results, hue='generatorname')
+sns.scatterplot(x='rmse_train', y='rmse_test', marker='o', ax=ax, data=df_results, hue='generatorname')
 ax.grid()
 
 ax.set_yscale('log')
@@ -214,7 +246,7 @@ fig.show()
 
 fig, ax = plt.subplots(1, 1, sharex=True, figsize=figsize_1on2)
 
-df_results.plotter.plot(x='mse_train', y='mse_test', marker='o', ax=ax)
+df_results.plotter.plot(x='rmse_train', y='rmse_test', marker='o', ax=ax)
 ax.grid()
 
 ax.set_yscale('log')
@@ -224,7 +256,7 @@ fig.show()
 
 fig, ax = plt.subplots(1, 1, sharex=True, figsize=figsize_1on2)
 
-df_results.plotter.plot(x='mse_train', y='mse_test', marker='o', ax=ax, hue='generatorname', linewidth=0)
+df_results.plotter.plot(x='rmse_train', y='rmse_test', marker='o', ax=ax, hue='generatorname', linewidth=0)
 ax.grid()
 
 ax.set_yscale('log')
@@ -234,11 +266,11 @@ fig.show()
 
 fig, axes = plt.subplots(2, 1, sharex=True, figsize=figsize_1on2)
 ax = axes[0]
-df_results.plotter.plot(x='numberofsamples', y='mse_test', marker='o', ax=ax, hue='generatorname')
+df_results.plotter.plot(x='numberofsamples_train', y='rmse_test', marker='o', ax=ax, hue='generatorname')
 ax.grid()
 
 ax = axes[1]
-df_results.plotter.plot(x='numberofsamples', y='mse_train', marker='o', ax=ax, hue='generatorname')
+df_results.plotter.plot(x='numberofsamples_train', y='rmse_train', marker='o', ax=ax, hue='generatorname')
 ax.grid()
 
 # ax.set_xscale('log')
@@ -248,12 +280,12 @@ fig.show()
 
 fig, axes = plt.subplots(2, 1, sharex=True, figsize=figsize_1, sharey=True)
 ax = axes[0]
-df_results.plotter.plot(x='numberofsamples', y='mse_test', marker='o', ax=ax, hue='generatorname')
+df_results.plotter.plot(x='numberofsamples_train', y='rmse_test', marker='o', ax=ax, hue='generatorname')
 ax.grid()
 ax.set_ylabel('mse_test')
 
 ax = axes[1]
-df_results.plotter.plot(x='numberofsamples', y='mse_train', marker='o', ax=ax, hue='generatorname')
+df_results.plotter.plot(x='numberofsamples_train', y='rmse_train', marker='o', ax=ax, hue='generatorname')
 ax.set_ylabel('mse_train')
 ax.grid()
 
@@ -265,12 +297,12 @@ fig.show()
 
 fig, axes = plt.subplots(2, 1, sharex=True, figsize=figsize_1, sharey=True)
 ax = axes[0]
-df_results.plotter.plot(x='numberofsamples', y='mse_test', marker='o', ax=ax, hue='generatorname')
+df_results.plotter.plot(x='numberofsamples_train', y='rmse_test', marker='o', ax=ax, hue='generatorname')
 ax.grid()
 ax.set_ylabel('mse_test')
 
 ax = axes[1]
-df_results.plotter.plot(x='numberofsamples', y='mse_train', marker='o', ax=ax, hue='generatorname')
+df_results.plotter.plot(x='numberofsamples_train', y='rmse_train', marker='o', ax=ax, hue='generatorname')
 ax.set_ylabel('mse_train')
 ax.grid()
 
@@ -281,7 +313,3 @@ fig.suptitle('Linear Regression')
 fig.show()
 
 # %%
-
-
-# %%
-
